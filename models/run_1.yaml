@@ -1,3 +1,3 @@
 keypoint_detection:
-  use_detector : False
-  detection_algo : fpfh
+  use_keypt_downsample : True
+  detection_method : random

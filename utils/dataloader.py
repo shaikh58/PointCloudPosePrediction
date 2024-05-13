@@ -7,16 +7,15 @@ import open3d as o3d
 from scipy.io import loadmat
 from scipy.spatial.transform import Rotation as R
 from typing import Any, Callable, Optional, Tuple
-from utils.utils import invert_pose
+from utils.utils import invert_pose, KeyPointDetector, KeyPointDetectorType, keypt_enum_map
 
 
 class EdenDataset(Dataset):
     def __init__(self, data_dir,
-                 train: bool = True, transform: Optional[Callable] = None, 
-                 target_transform: Optional[Callable] = None) -> None:
+                 train: bool, use_keypt_downsample : bool, keypt_method : str) -> None:
         
         self.data_dir = data_dir
-        self.sequences = sorted(os.listdir(os.path.join(data_dir,"rgb"))[1:]) # 0001, 0003, etc.
+        self.sequences = sorted(os.listdir(os.path.join(data_dir,"rgb")))[1:] # 0001, 0003, etc.
         self.dict_seq_len = {seq:len(os.listdir(os.path.join(data_dir, "poses", seq, "clear"))) 
                              for seq in self.sequences}
         self.seq_len = 500  # assume Eden dataset has 500 data points per sequence
@@ -26,8 +25,12 @@ class EdenDataset(Dataset):
         
         self.cam_width, self.cam_height = 640, 480
         self.cam_instrinsics = np.array([[640,0,320],[0,640,240],[0,0,1]])
-        self.transform = transform
-        self.target_transform = target_transform
+
+        self.use_keypt_downsample = use_keypt_downsample
+        self.keypt_method = keypt_enum_map[keypt_method]
+        
+        if self.use_keypt_downsample:
+            self.keypt_detector = KeyPointDetector()
     
     def pcd_from_rgb_depth(self, rgb, depth) -> o3d.geometry.PointCloud:
         rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb, depth)
@@ -84,10 +87,18 @@ class EdenDataset(Dataset):
         # create Open3D RGBD image and point cloud
         pcd = self.pcd_from_rgb_depth(self.rgb, self.depth)
         pcd_prev = self.pcd_from_rgb_depth(self.rgb_prev, self.depth_prev)
-        
+
+        # downsample using keypoint detection
+        if self.use_keypt_downsample:
+            pcd = self.keypt_detector.process(keyPointAlgo=self.keypt_method, pcd=pcd)
+            pcd_prev = self.keypt_detector.process(keyPointAlgo=self.keypt_method, pcd=pcd_prev)
+        else:
+            # keypoint detectors return point cloud as ndarray; code below expects ndnarray
+            pcd, pcd_prev = np.asarray(pcd), np.asarray(pcd_prev)
+
         # normalize the point cloud
-        pcd = self.process_pcd(np.asarray(pcd.points))
-        pcd_prev = self.process_pcd(np.asarray(pcd_prev.points))
+        pcd = self.process_pcd(pcd)
+        pcd_prev = self.process_pcd(pcd)
 
         return {"pcd1":torch.from_numpy(pcd.astype(np.float32)),\
                 "pcd2":torch.from_numpy(pcd_prev.astype(np.float32)),\
