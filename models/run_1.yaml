@@ -1,0 +1,3 @@
+keypoint_detection:
+  use_detector : False
+  detection_algo : fpfh

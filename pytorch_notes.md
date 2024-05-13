@@ -98,3 +98,39 @@ Creating our custom dataset:
 - See https://pytorch.org/tutorials/beginner/introyt/trainingyt.html for full code example
 - Note: Use model.eval() to set to evaluation mode, disabling dropout and using population statistics for batch normalization
 - Also use with torch.no_grad() to speed up inference for validation accuracy during the training loop
+
+
+### Data Augmentation
+- torchvision.transforms provides many out-of-the-box transformations e.g. Gaussian blur, horizontal flip, affine (shear/rotation), resized crop
+- Pytorch applies these randomly and in sequence; can be used to increase the number of data points by increasing the number of epochs
+- Flipping can be done with np.flip and specifying the axis to flip on; axis=0 reverses the order within each row i.e. horizontal flip, axis=1 flips the rows i.e. vertical flip
+- Transposing the image reshapes the image and reflects it in the line y=-x since the top right pixel now goes to the bottom left
+
+
+### Image Processing
+- Convolution kernels can be designed to process images in multiple ways: blur, sharpen, edge detection, contrast etc.
+- These kernels produce a high response when the patch matches the kernel
+- Sharpen works by blurring the original image, then subtracting the blurred image from the original to get the "detail" (noise), and then adding that back to the original image
+- Sobel filters calculate the gradient in the x and y direction, which is used to compute the gradient orientation and magnitude for methods such as Histogram of Oriented Gradients
+- Canny edge detection is a commonly used edge detector
+
+#### Feature Extraction
+- **Histogram of Oriented Gradients** 
+- **SIFT**
+
+
+#### Stereo Vision; feature matching, depth
+- 
+
+### Convolutional Neural Nets
+- Kernel size - larger at the beginning with fewer channels, more channels and smaller later in the network. Receptive field.
+- Stride, padding, maxpool
+- **Batch Normalization**: Results with batchnorm are significantly better than without. 
+    - Optimizers work better with parameters that are on the same scale. Normalizing the data prevents large differences in magnitude between weights to dominate the shape of the loss curve and therefore affect convergence
+    - Batch norm seems to act as a regularizer for the network. It injects some 'noise' into the network by using noisy estimates of the mean and variance and regularizing the data based on those noisy estimates. This is why its important to normalize by batch rather than on the whole dataset, since the variability actually helps networks converge.
+- 1x1 convolution
+- Global Average Pooling - averages across the kernel size and is used to downsample the feature map. Often used instead of fully connected layers
+
+
+### Neural network training tips
+https://cs231n.github.io/neural-networks-3/
