@@ -7,6 +7,7 @@ from torch.autograd import Variable
 import numpy as np
 import torch.nn.functional as F
 from copy import deepcopy
+torch.set_default_dtype(torch.float64)
 
 class STN3d(nn.Module):
     def __init__(self):
@@ -38,7 +39,7 @@ class STN3d(nn.Module):
         x = F.relu(self.bn5(self.fc2(x)))
         x = self.fc3(x)
 
-        iden = Variable(torch.from_numpy(np.array([1,0,0,0,1,0,0,0,1]).astype(np.float32))).view(1,9).repeat(batchsize,1)
+        iden = Variable(torch.from_numpy(np.array([1,0,0,0,1,0,0,0,1]).astype(np.float64))).view(1,9).repeat(batchsize,1)
         if x.is_cuda:
             iden = iden.cuda()
         x = x + iden
@@ -77,7 +78,7 @@ class STNkd(nn.Module):
         x = F.relu(self.bn5(self.fc2(x)))
         x = self.fc3(x)
 
-        iden = Variable(torch.from_numpy(np.eye(self.k).flatten().astype(np.float32))).view(1,self.k*self.k).repeat(batchsize,1)
+        iden = Variable(torch.from_numpy(np.eye(self.k).flatten().astype(np.float64))).view(1,self.k*self.k).repeat(batchsize,1)
         if x.is_cuda:
             iden = iden.cuda()
         x = x + iden
@@ -169,7 +170,7 @@ class PointNetDenseCls(nn.Module):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
-        feat_vec128 = deepcopy(x)
+        feat_vec128 = x.detach()
         x = self.conv4(x)
         x = x.transpose(2,1).contiguous()
         x = F.log_softmax(x.view(-1,self.k), dim=-1)
