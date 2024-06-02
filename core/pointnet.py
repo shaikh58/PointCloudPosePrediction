@@ -6,12 +6,11 @@ import torch.utils.data
 from torch.autograd import Variable
 import numpy as np
 import torch.nn.functional as F
-from copy import deepcopy
 torch.set_default_dtype(torch.float64)
 
 class STN3d(nn.Module):
     def __init__(self):
-        super(STN3d, self).__init__()
+        super().__init__()
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
         self.conv3 = torch.nn.Conv1d(128, 1024, 1)
@@ -49,7 +48,7 @@ class STN3d(nn.Module):
 
 class STNkd(nn.Module):
     def __init__(self, k=64):
-        super(STNkd, self).__init__()
+        super().__init__()
         self.conv1 = torch.nn.Conv1d(k, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
         self.conv3 = torch.nn.Conv1d(128, 1024, 1)
@@ -87,7 +86,7 @@ class STNkd(nn.Module):
 
 class PointNetfeat(nn.Module):
     def __init__(self, global_feat = True, feature_transform = False):
-        super(PointNetfeat, self).__init__()
+        super().__init__()
         self.stn = STN3d()
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
@@ -129,7 +128,7 @@ class PointNetfeat(nn.Module):
 
 class PointNetCls(nn.Module):
     def __init__(self, k=2, feature_transform=False):
-        super(PointNetCls, self).__init__()
+        super().__init__()
         self.feature_transform = feature_transform
         self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform)
         self.fc1 = nn.Linear(1024, 512)
@@ -150,7 +149,7 @@ class PointNetCls(nn.Module):
 
 class PointNetDenseCls(nn.Module):
     def __init__(self, k = 2, feature_transform=False):
-        super(PointNetDenseCls, self).__init__()
+        super().__init__()
         self.k = k
         self.feature_transform=feature_transform
         # global_feat = false concatenates nx1024 with nx64 from 2nd T-net (desired behaviour)
@@ -176,6 +175,30 @@ class PointNetDenseCls(nn.Module):
         x = F.log_softmax(x.view(-1,self.k), dim=-1)
         x = x.view(batchsize, n_pts, self.k)
         return x, trans, trans_feat, feat_vec128
+
+
+class PointNetFeatureExtractor(nn.Module):
+    def __init__(self, feature_transform=False):
+        super().__init__()
+        self.feature_transform=feature_transform
+        # global_feat = false concatenates nx1024 with nx64 from 2nd T-net (desired behaviour)
+        self.feat = PointNetfeat(global_feat=False, feature_transform=feature_transform)
+        self.conv1 = torch.nn.Conv1d(1088, 512, 1)
+        self.conv2 = torch.nn.Conv1d(512, 256, 1)
+        self.conv3 = torch.nn.Conv1d(256, 128, 1)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.bn3 = nn.BatchNorm1d(128)
+
+    def forward(self, x):
+        batchsize = x.size()[0]
+        n_pts = x.size()[2]
+        x, trans, trans_feat = self.feat(x)
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        return x
+
 
 def feature_transform_regularizer(trans):
     d = trans.size()[1]
