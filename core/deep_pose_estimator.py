@@ -8,10 +8,12 @@ import torch.nn.functional as F
 from core.pointnet import PointNetFeatureExtractor
 torch.set_default_dtype(torch.float64)
 
+
 def PoseLoss(pred, target):
     """Expects a length 7 vector, upper 3 elements are relative position, 
     lower 4 are relative rotation in quaternion form"""
-    return torch.linalg.norm(pred[:3] - target[:3]) + torch.linalg.norm(pred[3:] - pred[3:])
+    return torch.linalg.norm(pred[:3] - target[:3]) + torch.linalg.norm(target[3:] - pred[3:]/np.linalg.norm(pred[3:]))
+
 
 class PCA(nn.Module):
     def __init__(self, num_pc):
@@ -27,14 +29,16 @@ class PCA(nn.Module):
 class DeepPoseEstimator(nn.Module):
     def __init__(self):
         super().__init__()
-        self.pcd_feat = PointNetFeatureExtractor(feature_transform=True)
+        # separate learnable feature extractors for each input point cloud
+        self.pcd_feat1 = PointNetFeatureExtractor(feature_transform=True)
+        self.pcd_feat2 = PointNetFeatureExtractor(feature_transform=True)
         self.pca = PCA(num_pc=5)
-        self.pca.requires_grad_(False)
+        self.pca.requires_grad_(False) # frozen layer
 
     def forward(self, pcd1, pcd2):
-        pcd1_feat = self.pcd_feat(pcd1)
-        pcd2_feat = self.pcd_feat(pcd2)
+        pcd1_feat, trans_feat_1 = self.pcd_feat1(pcd1)
+        pcd2_feat, trans_feat_2 = self.pcd_feat2(pcd2)
         pcd1_pca = self.pca(pcd1_feat)
         pcd2_pca = self.pca(pcd2_feat)
-
-        return pcd1_feat
+        pose_vec = nn.Linear()
+        return pose_vec, trans_feat_1, trans_feat_2

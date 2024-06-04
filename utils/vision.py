@@ -72,7 +72,7 @@ class KeyPointDetector:
         return pcd_fpfh
     
     def random(self, pcd : o3d.geometry.PointCloud):
-        num_pts = 500
+        num_pts = 50000
         # keep_inds = np.random.choice(len(pcd.points)-1, len(pcd.points)//100)
         keep_inds = np.random.choice(len(pcd.points)-1, num_pts)
         return np.asarray(pcd.points)[keep_inds]

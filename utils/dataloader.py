@@ -23,11 +23,11 @@ class EdenDataset(Dataset):
         self.dset_len = 0
         for k,v in self.dict_seq_len.items():
             self.dset_len += v
-        self.pcd_num_pts = pcd_num_pts
         
         self.cam_width, self.cam_height = 640, 480
         self.K = np.array([[640,0,320],[0,640,240],[0,0,1]])
 
+        self.pcd_num_pts = pcd_num_pts
         self.keypt_method = utils.vision.keypt_enum_map[keypt_method]
 
         self.KeyPointDetector = utils.vision.KeyPointDetector()
@@ -72,7 +72,7 @@ class EdenDataset(Dataset):
             self.seg_prev = cv2.imread(os.path.join(seg_dir_path, rgb_file_list[pos*2 - 2][:-4] + "_Sem.png"), cv2.IMREAD_GRAYSCALE)
 
         # get relative pose; t_T_t+1 i.e. next to current - inside brackets is tTw @ w_T_t-1 = t_T_t-1
-        rel_pose = utils.utils.invert_pose(utils.utils.invert_pose(self.pose) @ self.pose_prev)
+        rel_pose = np.dot(utils.utils.invert_pose(self.pose), self.pose_prev)
         # convert pose matrix to quaternion/position/orientation
         quat = R.from_matrix(rel_pose[:3,:3]).as_quat()
         translation =  rel_pose[:3,3]
@@ -81,19 +81,19 @@ class EdenDataset(Dataset):
         list_kp = self.KeyPointDetector.process(keyPointAlgo=self.keypt_method, data=self.rgb)
         list_kp_prev = self.KeyPointDetector.process(keyPointAlgo=self.keypt_method, data=self.rgb_prev)
 
-        arr_kp = np.zeros((len(list_kp),2))
-        arr_kp_prev = np.zeros((len(list_kp),2))
+        arr_kp = np.zeros((self.pcd_num_pts,2))
+        arr_kp_prev = np.zeros((self.pcd_num_pts,2))
 
         # create point cloud array; could have less key points than specified in config
-        pcd = np.zeros((len(list_kp),3))
-        pcd_prev = np.zeros((len(list_kp),3))
+        pcd = np.zeros((self.pcd_num_pts,3))
+        pcd_prev = np.zeros((self.pcd_num_pts,3))
 
         # stop loop at shorter keypt list; assume successive images have similar number of keypts
-        for i in range(min(len(list_kp),len(list_kp_prev))):
+        for i in range(min(len(list_kp),len(list_kp_prev),self.pcd_num_pts)):
             arr_kp[i] = list_kp[i].pt
             arr_kp_prev[i] = list_kp_prev[i].pt
 
-        # fill empty rows with first value (arbitrary) in case there aren't pcd_num_pts from keypt detection
+        # fill empty rows with first value (arbitrary) in case there aren't enough pts from keypt detection
         arr_kp[np.all(arr_kp==0, axis=1)] = arr_kp[0]
         arr_kp_prev[np.all(arr_kp_prev==0, axis=1)] = arr_kp_prev[0]
 
@@ -105,12 +105,13 @@ class EdenDataset(Dataset):
         pcd = self.PointCloudProcessor.pt_from_rgbd(arr_kp, arr_kp_depth, self.K, self.pose)
         pcd_prev = self.PointCloudProcessor.pt_from_rgbd(arr_kp_prev, arr_kp_prev_depth, self.K, self.pose_prev)
 
-        # normalize the point clou
+        # normalize the point cloud
         pcd = self.PointCloudProcessor.normalize(pcd)
         pcd_prev = self.PointCloudProcessor.normalize(pcd_prev)
 
         return {"pcd1":torch.from_numpy(pcd_prev).double(),\
                 "pcd2":torch.from_numpy(pcd).double(),\
+                "rel_pose":torch.from_numpy(rel_pose).double(),\
                 "translation":torch.from_numpy(translation).double(),\
                 "quat":torch.from_numpy(quat).double(),\
                 "pose":torch.from_numpy(self.pose).double()
@@ -119,10 +120,10 @@ class EdenDataset(Dataset):
     def __len__(self):
         return self.dset_len
     
+
 # original loader using open3d functions
 # class EdenDataset(Dataset):
-#     def __init__(self, data_dir,
-#                  train: bool, use_keypt_downsample : bool, keypt_method : str) -> None:
+#     def __init__(self, data_dir, train: bool, use_keypt_downsample : bool, keypt_method : str) -> None:
         
 #         self.data_dir = data_dir
 #         self.sequences = sorted(os.listdir(os.path.join(data_dir,"rgb")))[1:] # 0001, 0003, etc.
@@ -137,13 +138,14 @@ class EdenDataset(Dataset):
 #         self.cam_instrinsics = np.array([[640,0,320],[0,640,240],[0,0,1]])
 
 #         self.use_keypt_downsample = use_keypt_downsample
-#         self.keypt_method = keypt_enum_map[keypt_method]
+#         self.keypt_method = utils.vision.keypt_enum_map[keypt_method]
 
-#         if self.use_keypt_downsample:
-#             self.keypt_detector = KeyPointDetector()
+# #         if self.use_keypt_downsample:
+#         self.keypt_detector = utils.vision.KeyPointDetector()
     
 #     def pcd_from_rgb_depth(self, rgb, depth) -> o3d.geometry.PointCloud:
-#         rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb, depth)
+#         # o3d assumes depth scale = 1000 i.e. depth values given in mm. Eden has depth in m
+#         rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb, depth, depth_scale=1)
 #         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd,
 #         o3d.camera.PinholeCameraIntrinsic(self.cam_width, self.cam_height, self.cam_instrinsics))
 #         # Flip it, otherwise the pointcloud will be upside down
@@ -156,7 +158,7 @@ class EdenDataset(Dataset):
 #         pcd = pcd / dist  # scale
 #         return pcd
 
-#     # recall: this method overloads the square bracket operator (__setitem__ is setter)
+#     # recall: this method overloads the square bracket operator (_setitem_ is setter)
 #     def __getitem__(self, index):
 
 #         raw_seq, pos = divmod(index, self.seq_len)
@@ -176,7 +178,7 @@ class EdenDataset(Dataset):
 #         self.depth = o3d.io.read_image(os.path.join(depth_dir_path, rgb_file[:-4] + "_vis.png"))
 
 #         # now get the previous set of images etc. for the point cloud registration
-#         if pos == 0:
+#         if pos == 0 or pos == 100:
 #             self.pose_prev = self.pose
 #             self.rgb_prev = self.rgb
 #             self.depth_prev = self.depth
@@ -189,7 +191,8 @@ class EdenDataset(Dataset):
 #             self.seg_prev = o3d.io.read_image(os.path.join(seg_dir_path, rgb_file_list[pos*2 - 2][:-4] + "_Sem.png"))
 
 #         # get relative pose; recall transpose of rotation matrix is inverse rotation; t2 to world @ world to t1
-#         rel_pose = invert_pose(self.pose) @ self.pose_prev
+#         rel_pose = np.dot(utils.utils.invert_pose(self.pose), self.pose_prev)
+
 #         # convert pose matrix to quaternion/position/orientation
 #         quat = R.from_matrix(rel_pose[:3,:3]).as_quat()
 #         translation =  rel_pose[:3,3]
@@ -199,22 +202,23 @@ class EdenDataset(Dataset):
 #         pcd_prev = self.pcd_from_rgb_depth(self.rgb_prev, self.depth_prev)
 
 #         # downsample using keypoint detection
-#         if self.use_keypt_downsample:
-#             pcd = self.keypt_detector.process(keyPointAlgo=self.keypt_method, pcd=pcd)
-#             pcd_prev = self.keypt_detector.process(keyPointAlgo=self.keypt_method, pcd=pcd_prev)
-#         else:
-#             # keypoint detectors return point cloud as ndarray; code below expects ndnarray
-#             pcd, pcd_prev = np.asarray(pcd), np.asarray(pcd_prev)
+# #         if self.use_keypt_downsample:
+#         pcd = self.keypt_detector.process(keyPointAlgo=self.keypt_method, data=pcd)
+#         pcd_prev = self.keypt_detector.process(keyPointAlgo=self.keypt_method, data=pcd_prev)
+# #         else:
+# #             # keypoint detectors return point cloud as ndarray; code below expects ndnarray
+# #             pcd, pcd_prev = np.asarray(pcd), np.asarray(pcd_prev)
 
 #         # normalize the point cloud
-#         pcd = self.process_pcd(pcd)
-#         pcd_prev = self.process_pcd(pcd)
+#         # pcd = self.process_pcd(pcd)
+#         # pcd_prev = self.process_pcd(pcd_prev)
 
 #         return {"pcd1":torch.from_numpy(pcd).double(),\
 #                 "pcd2":torch.from_numpy(pcd_prev).double(),\
+#                 "rel_pose":torch.from_numpy(rel_pose).double(),\
 #                 "translation":torch.from_numpy(translation).double(),
 #                 "quat":torch.from_numpy(quat).double(),
-#                 "pose":torch.from_numpy(invert_pose(self.pose)).double()
+#                 "pose":torch.from_numpy(self.pose).double()
 #         }
     
 #     def __len__(self):
