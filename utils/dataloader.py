@@ -13,7 +13,7 @@ import utils.vision
 
 
 class EdenDataset(Dataset):
-    def __init__(self, data_dir, train:bool, keypt_method:str, pcd_num_pts:int) -> None:
+    def __init__(self, data_dir, keypt_method:str, pcd_num_pts:int) -> None:
         
         self.data_dir = data_dir
         self.sequences = sorted(os.listdir(os.path.join(data_dir,"rgb")))[1:] # 0001, 0003, etc.
@@ -123,7 +123,7 @@ class EdenDataset(Dataset):
 
 # original loader using open3d functions
 # class EdenDataset(Dataset):
-#     def __init__(self, data_dir, train: bool, use_keypt_downsample : bool, keypt_method : str) -> None:
+#     def __init__(self, data_dir, use_keypt_downsample : bool, keypt_method : str) -> None:
         
 #         self.data_dir = data_dir
 #         self.sequences = sorted(os.listdir(os.path.join(data_dir,"rgb")))[1:] # 0001, 0003, etc.
