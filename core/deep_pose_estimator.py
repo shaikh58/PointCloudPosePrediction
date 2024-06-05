@@ -17,10 +17,11 @@ def PoseLoss(pred, target):
 
 class PCA(nn.Module):
     def __init__(self, num_pc):
-        super().__init()
+        super().__init__()
         self.num_pc = num_pc
 
     def forward(self, x):
+        # TODO: set seed to ensure axes are the same every time
         U,S,V = torch.pca_lowrank(x)
         projected = torch.matmul(x, V[:,:,:self.num_pc])
         return projected
@@ -36,6 +37,8 @@ class DeepPoseEstimator(nn.Module):
         self.pca.requires_grad_(False) # frozen layer
 
     def forward(self, pcd1, pcd2):
+        pcd1 = pcd1.view(0,2,1)
+        pcd2 = pcd2.view(0,2,1)
         pcd1_feat, trans_feat_1 = self.pcd_feat1(pcd1)
         pcd2_feat, trans_feat_2 = self.pcd_feat2(pcd2)
         pcd1_pca = self.pca(pcd1_feat)
