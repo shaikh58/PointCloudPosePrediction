@@ -109,12 +109,12 @@ class EdenDataset(Dataset):
         pcd = self.PointCloudProcessor.normalize(pcd)
         pcd_prev = self.PointCloudProcessor.normalize(pcd_prev)
 
-        return {"pcd1":torch.from_numpy(pcd_prev).double(),\
-                "pcd2":torch.from_numpy(pcd).double(),\
-                "rel_pose":torch.from_numpy(rel_pose).double(),\
-                "translation":torch.from_numpy(translation).double(),\
-                "quat":torch.from_numpy(quat).double(),\
-                "pose":torch.from_numpy(self.pose).double()
+        return {"pcd1":torch.from_numpy(pcd_prev).float(),\
+                "pcd2":torch.from_numpy(pcd).float(),\
+                "rel_pose":torch.from_numpy(rel_pose).float(),\
+                "translation":torch.from_numpy(translation).float(),\
+                "quat":torch.from_numpy(quat).float(),\
+                "pose":torch.from_numpy(self.pose).float()
         }
     
     def __len__(self):

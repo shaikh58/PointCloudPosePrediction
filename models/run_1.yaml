@@ -1,4 +1,4 @@
 keypoint_detection:
   detection_method : sift
-  pcd_num_pts : 2000
-epochs : 30
+  pcd_num_pts : 2000 # note, sift only reliably generates ~2000 key points
+epochs : 10
