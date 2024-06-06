@@ -6,6 +6,7 @@ from torch.autograd import Variable
 import numpy as np
 import torch.nn.functional as F
 from core.pointnet import PointNetFeatureExtractor
+import yaml
 torch.set_default_dtype(torch.float32)
 
 
@@ -22,26 +23,32 @@ def PoseLoss(pred, target):
             
 
 class PCA(nn.Module):
-    def __init__(self, num_pc):
+    def __init__(self, num_pc : int, use_pca : bool):
         super().__init__()
         self.num_pc = num_pc
+        self.use_pca = use_pca
 
     def forward(self, x):
-        # TODO: set seed to ensure axes are the same every time
-        U,S,V = torch.pca_lowrank(x)
-        projected = torch.matmul(x, V[:,:,:self.num_pc])
-        return projected
+        if self.use_pca:
+            U,S,V = torch.pca_lowrank(x)
+            projected = torch.matmul(x, V[:,:,:self.num_pc])
+            return projected
+        else:
+            return x.permute(0,2,1)
 
 
 class DeepPoseEstimator(nn.Module):
-    def __init__(self, num_pts):
+    def __init__(self, num_pts, use_pca):
         super().__init__()
-        self.num_pc = 5
+        self.num_pc = 0
+        self.use_pca = use_pca
+        if self.use_pca:
+            self.num_pc = 5
         self.num_pts = num_pts
         # separate learnable feature extractors for each input point cloud
         self.pcd_feat1 = PointNetFeatureExtractor(feature_transform=True)
         self.pcd_feat2 = PointNetFeatureExtractor(feature_transform=True)
-        self.pca = PCA(self.num_pc)
+        self.pca = PCA(self.num_pc, self.use_pca)
         self.pca.requires_grad_(False) # frozen layer
         self.fc = nn.Linear(2*self.num_pc*self.num_pts,7,bias=True, dtype=torch.float32)
 
