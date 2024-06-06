@@ -3,6 +3,7 @@ from enum import Enum
 import open3d as o3d
 from typing import Callable 
 import cv2
+from functools import singledispatch
 
 
 class PointCloudProcessor:
@@ -48,8 +49,9 @@ class KeyPointDetectorType(Enum):
 
 
 class KeyPointDetector:
-    def __init__(self) -> None:
+    def __init__(self, pcd_num_pts) -> None:
         self.router : dict = {"ORB":self.orb, "SIFT":self.sift, "FPFH":self.fpfh, "RANDOM":self.random}
+            self.pcd_num_pts = pcd_num_pts
 
     def process(self, keyPointAlgo : KeyPointDetectorType, data) -> Callable:
         """Takes in img or pcd depending on the keypt detection method being used; argument must match method"""
@@ -71,13 +73,22 @@ class KeyPointDetector:
         o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=100))
         return pcd_fpfh
     
-    def random(self, pcd : o3d.geometry.PointCloud):
-        num_pts = 50000
-        # keep_inds = np.random.choice(len(pcd.points)-1, len(pcd.points)//100)
-        keep_inds = np.random.choice(len(pcd.points)-1, num_pts)
-        return np.asarray(pcd.points)[keep_inds]
+    @singledispatch
+    def random(self, arg):
+        return
+
+    @random.register(np.ndarray)
+    def _(self, arg : np.ndarray):
+        keep_inds = np.random.choice(len(arg)-1, self.pcd_num_pts)
+        return arg[keep_inds]
+    
+    @random.register(o3d.geometry.PointCloud)
+    def _(self, arg : o3d.geometry.PointCloud):
+        keep_inds = np.random.choice(len(arg.points)-1, self.pcd_num_pts)
+        return np.asarray(arg.points)[keep_inds]
     
 
+    
 keypt_enum_map = {"orb":KeyPointDetectorType.ORB,
                 "fpfh":KeyPointDetectorType.FPFH,
                 "sift":KeyPointDetectorType.SIFT,

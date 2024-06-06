@@ -4,7 +4,8 @@ keypoint_detection:
 model:
     use_pca : True
 train:
-    epochs : 10
-    lr : 0.001
+    epochs : 20
+    lr : 0.01
     batch_size : 20
     
+# model architecture : single pointnet FE + single 1x1 conv (channels is post-pca feature vector len = 5) + linear

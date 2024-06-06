@@ -30,7 +30,7 @@ class EdenDataset(Dataset):
         self.pcd_num_pts = pcd_num_pts
         self.keypt_method = utils.vision.keypt_enum_map[keypt_method]
 
-        self.KeyPointDetector = utils.vision.KeyPointDetector()
+        self.KeyPointDetector = utils.vision.KeyPointDetector(pcd_num_pts)
         self.PointCloudProcessor = utils.vision.PointCloudProcessor()
 
     def get_corr_depth(self, x) -> float:

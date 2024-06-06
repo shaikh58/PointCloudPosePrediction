@@ -1,0 +1,12 @@
+keypoint_detection:
+  detection_method : sift
+  pcd_num_pts : 2000 # note, sift only reliably generates ~2000 key points
+model:
+    use_pca : True
+train:
+    epochs : 20
+    lr : 0.001
+    batch_size : 30
+    
+# model architecture : single pointnet FE + single 1x1 conv (channels is post-pca feature vector len = 5) + linear
+                    # no regularization term in loss
