@@ -53,21 +53,25 @@ torch.set_default_dtype(torch.float32)
 class DeepPoseEstimator(nn.Module):
     def __init__(self, num_pts, use_pca):
         super().__init__()
+        
         self.use_pca = use_pca
         if self.use_pca:
             self.num_pc = 5
         else:
             self.num_pc = 128
         self.num_pts = num_pts
+        
         # single learnable feature extractors for both input point clouds
         self.pcd_feat = PointNetFeatureExtractor(feature_transform=True)
         self.pca = PCA(self.num_pc, self.use_pca)
         self.pca.requires_grad_(False) # frozen layer
+        
         # 1x1 conv on 5 num input channels x num_pts vector; conv fully connected layer
         self.out_channels_1 = 1
         self.conv1 = nn.Conv1d(self.num_pc, self.out_channels_1, 1)
         self.bn1 = nn.BatchNorm1d(self.out_channels_1)
         self.relu = nn.ReLU()
+        
         # final regression layer
         self.fc = nn.Linear(2*self.num_pts,7,bias=True, dtype=torch.float32)
 
