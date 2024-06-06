@@ -8,3 +8,4 @@ train:
     epochs : 10
     lr : 0.001
     
+# model architecture: 2 pointnet FE + linear layer
