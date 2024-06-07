@@ -53,10 +53,12 @@ class KeyPointDetector:
         self.router : dict = {"ORB":self.orb, "SIFT":self.sift, "FPFH":self.fpfh, "RANDOM":self.random}
         self.pcd_num_pts = pcd_num_pts
 
+
     def process(self, keyPointAlgo : KeyPointDetectorType, data) -> Callable:
         """Takes in img or pcd depending on the keypt detection method being used; argument must match method"""
         return self.router[keyPointAlgo.name](data)
         
+
     def orb(self, img : np.ndarray) -> list:
         """need to project pixel frame keypoints onto point cloud (intrinsics)"""
         _kp = []
@@ -66,6 +68,7 @@ class KeyPointDetector:
             _kp.append(data.pt)
         return _kp
     
+
     def sift(self, img : np.ndarray) -> list:
         _kp = []
         sift = cv2.SIFT_create() 
@@ -74,21 +77,32 @@ class KeyPointDetector:
             _kp.append(data.pt)
         return _kp
     
+
     def fpfh(self, pcd : o3d.geometry.PointCloud):
         pcd_fpfh = o3d.pipelines.registration.compute_fpfh_feature(pcd,
-        o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=100))
+            o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=100))
         return pcd_fpfh
     
+
     @singledispatchmethod
     def random(self, arg):
         return
 
     @random.register(np.ndarray)
     def _(self, arg : np.ndarray) -> np.ndarray:
-        print(arg.shape)
-        keep_inds = np.random.choice(arg.shape[0]-1, self.pcd_num_pts)
-        return arg[keep_inds]
+        """Given an RGB image, outputs pixel indices for sampled points"""
+        
+        height, width = 480, 640
+        downsample_rate = (height * width) // self.pcd_num_pts
+        #  reate the grid of pixel indices
+        u,v = np.meshgrid(np.arange(width), np.arange(height))
+        # use computed stride to get 480x640 shape indices of sampled pixels
+        u_sample, v_sample = u[::downsample_rate,::downsample_rate],\
+                                v[::downsample_rate,::downsample_rate]
+        # combine to e.g. 240x320x2 i.e. lower res pixel coords; reshape to Nx2 pixel coords
+        return np.stack((u_sample, v_sample), axis=2).reshape(-1,2)
     
+
     @random.register(o3d.geometry.PointCloud)
     def _(self, arg : o3d.geometry.PointCloud) -> np.ndarray:
         keep_inds = np.random.choice(len(arg.points)-1, self.pcd_num_pts)

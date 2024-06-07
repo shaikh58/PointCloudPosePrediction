@@ -30,7 +30,7 @@ class EdenDataset(Dataset):
         self.pcd_num_pts = pcd_num_pts
         self.keypt_method = utils.vision.keypt_enum_map[keypt_method]
 
-        self.KeyPointDetector = utils.vision.KeyPointDetector(pcd_num_pts)
+        self.KeyPointDetector = utils.vision.KeyPointDetector(self.pcd_num_pts)
         self.PointCloudProcessor = utils.vision.PointCloudProcessor()
 
     def get_corr_depth(self, x) -> float:
@@ -88,10 +88,15 @@ class EdenDataset(Dataset):
         pcd = np.zeros((self.pcd_num_pts,3))
         pcd_prev = np.zeros((self.pcd_num_pts,3))
 
-        # stop loop at shorter keypt list; assume successive images have similar number of keypts
-        for i in range(min(len(list_kp),len(list_kp_prev),self.pcd_num_pts)):
-            arr_kp[i] = list_kp[i]
-            arr_kp_prev[i] = list_kp_prev[i]
+        if self.keypt_method == utils.vision.KeyPointDetectorType.RANDOM:
+            # the random detector type outputs an ndarray of exactly num_pcd_pts
+            arr_kp = list_kp
+            arr_kp_prev = list_kp_prev
+        else:
+            # stop loop at shorter keypt list; assume successive images have similar number of keypts
+            for i in range(min(len(list_kp),len(list_kp_prev),self.pcd_num_pts)):
+                arr_kp[i] = list_kp[i]
+                arr_kp_prev[i] = list_kp_prev[i]
 
         # fill empty rows with first value (arbitrary) in case there aren't enough pts from keypt detection
         arr_kp[np.all(arr_kp==0, axis=1)] = arr_kp[0]
