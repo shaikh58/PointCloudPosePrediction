@@ -93,14 +93,15 @@ class KeyPointDetector:
         """Given an RGB image, outputs pixel indices for sampled points"""
         
         height, width = 480, 640
-        downsample_rate = (height * width) // self.pcd_num_pts
-        #  reate the grid of pixel indices
+        # to downsample 4x, we need a stride of 2 in x,y directions
+        downsample_rate = int(np.sqrt((height * width) // self.pcd_num_pts))
+        # create the grid of pixel indices
         u,v = np.meshgrid(np.arange(width), np.arange(height))
         # use computed stride to get 480x640 shape indices of sampled pixels
         u_sample, v_sample = u[::downsample_rate,::downsample_rate],\
                                 v[::downsample_rate,::downsample_rate]
         # combine to e.g. 240x320x2 i.e. lower res pixel coords; reshape to Nx2 pixel coords
-        return np.stack((u_sample, v_sample), axis=2).reshape(-1,2)
+        return np.stack((u_sample, v_sample), axis=2).reshape(-1,2)[:self.pcd_num_pts, :]
     
 
     @random.register(o3d.geometry.PointCloud)

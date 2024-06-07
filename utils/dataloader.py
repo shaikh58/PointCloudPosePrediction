@@ -80,7 +80,6 @@ class EdenDataset(Dataset):
         # detect key points from original input images
         list_kp = self.KeyPointDetector.process(keyPointAlgo=self.keypt_method, data=self.rgb)
         list_kp_prev = self.KeyPointDetector.process(keyPointAlgo=self.keypt_method, data=self.rgb_prev)
-
         arr_kp = np.zeros((self.pcd_num_pts,2))
         arr_kp_prev = np.zeros((self.pcd_num_pts,2))
 
@@ -89,7 +88,7 @@ class EdenDataset(Dataset):
         pcd_prev = np.zeros((self.pcd_num_pts,3))
 
         if self.keypt_method == utils.vision.KeyPointDetectorType.RANDOM:
-            # the random detector type outputs an ndarray of exactly num_pcd_pts
+            # the random detector type outputs an ndarray of slightly less than pcd_num_pts
             arr_kp = list_kp
             arr_kp_prev = list_kp_prev
         else:
@@ -101,7 +100,6 @@ class EdenDataset(Dataset):
         # fill empty rows with first value (arbitrary) in case there aren't enough pts from keypt detection
         arr_kp[np.all(arr_kp==0, axis=1)] = arr_kp[0]
         arr_kp_prev[np.all(arr_kp_prev==0, axis=1)] = arr_kp_prev[0]
-
         # get depth values corresponding to keypoint pixel indexes
         arr_kp_depth = self.get_corr_depth(arr_kp)
         arr_kp_prev_depth = self.get_corr_depth(arr_kp_prev)

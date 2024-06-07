@@ -76,11 +76,12 @@ class DeepPoseEstimator(nn.Module):
         self.fc = nn.Linear(2*self.num_pts,7,bias=True, dtype=torch.float32)
 
     def forward(self, pcd1, pcd2):
+        
         # input pcd : batch_size x 3 x num_pts (transposed before input)
         pcd1_feat, trans_feat_1 = self.pcd_feat(pcd1)
         pcd2_feat, trans_feat_2 = self.pcd_feat(pcd2)
-        # after feature extraction : batch_size x num_pts x 128
-    
+        
+        # after feature extraction : batch_size x 128 x num_pts
         pcd1_feat, pcd2_feat = pcd1_feat.permute((0,2,1)), pcd2_feat.permute((0,2,1))
         pcd1_feat = self.pca(pcd1_feat).permute(0,2,1)
         pcd2_feat = self.pca(pcd2_feat).permute(0,2,1)
@@ -89,9 +90,10 @@ class DeepPoseEstimator(nn.Module):
         pcd1_feat = self.relu(self.bn1(self.conv1(pcd1_feat)))
         pcd2_feat = self.relu(self.bn1(self.conv1(pcd2_feat)))
         # after 1x1 conv : batch_size x 1 x num_pts (each point is represented by a scalar)
-        
+        print(pcd1_feat.shape, pcd2_feat.shape)
         # concatenate per-point scalar into single vector
-        combined_pcd = torch.cat((pcd1_feat, pcd2_feat), dim=1).permute(0,2,1)
+        combined_pcd = torch.cat((pcd1_feat, pcd2_feat), dim=2).permute(0,2,1)
+
         # batch_size x 2*num_pts x 1
         combined_pcd = torch.flatten(combined_pcd, start_dim=1)
         # remove redundant dim at the end; batch_size x 2*num_pts
