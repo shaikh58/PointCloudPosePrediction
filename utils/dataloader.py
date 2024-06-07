@@ -90,8 +90,8 @@ class EdenDataset(Dataset):
 
         # stop loop at shorter keypt list; assume successive images have similar number of keypts
         for i in range(min(len(list_kp),len(list_kp_prev),self.pcd_num_pts)):
-            arr_kp[i] = list_kp[i].pt
-            arr_kp_prev[i] = list_kp_prev[i].pt
+            arr_kp[i] = list_kp[i]
+            arr_kp_prev[i] = list_kp_prev[i]
 
         # fill empty rows with first value (arbitrary) in case there aren't enough pts from keypt detection
         arr_kp[np.all(arr_kp==0, axis=1)] = arr_kp[0]

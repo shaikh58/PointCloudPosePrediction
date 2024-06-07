@@ -3,7 +3,7 @@ from enum import Enum
 import open3d as o3d
 from typing import Callable 
 import cv2
-from functools import singledispatch
+from functools import singledispatchmethod
 
 
 class PointCloudProcessor:
@@ -51,39 +51,46 @@ class KeyPointDetectorType(Enum):
 class KeyPointDetector:
     def __init__(self, pcd_num_pts) -> None:
         self.router : dict = {"ORB":self.orb, "SIFT":self.sift, "FPFH":self.fpfh, "RANDOM":self.random}
-            self.pcd_num_pts = pcd_num_pts
+        self.pcd_num_pts = pcd_num_pts
 
     def process(self, keyPointAlgo : KeyPointDetectorType, data) -> Callable:
         """Takes in img or pcd depending on the keypt detection method being used; argument must match method"""
         return self.router[keyPointAlgo.name](data)
         
-    def orb(self, img : np.ndarray):
+    def orb(self, img : np.ndarray) -> list:
         """need to project pixel frame keypoints onto point cloud (intrinsics)"""
+        _kp = []
         orb = cv2.ORB_create()
         kp, des = orb.detectAndCompute(img,None)
-        return kp
+        for data in kp:
+            _kp.append(data.pt)
+        return _kp
     
-    def sift(self, img : np.ndarray):
-        surf = cv2.SIFT_create() 
-        kp, des = surf.detectAndCompute(img,None)
-        return kp
+    def sift(self, img : np.ndarray) -> list:
+        _kp = []
+        sift = cv2.SIFT_create() 
+        kp, des = sift.detectAndCompute(img,None)
+        for data in kp:
+            _kp.append(data.pt)
+        return _kp
     
     def fpfh(self, pcd : o3d.geometry.PointCloud):
         pcd_fpfh = o3d.pipelines.registration.compute_fpfh_feature(pcd,
         o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=100))
         return pcd_fpfh
     
-    @singledispatch
+    @singledispatchmethod
     def random(self, arg):
         return
 
     @random.register(np.ndarray)
-    def _(self, arg : np.ndarray):
-        keep_inds = np.random.choice(len(arg)-1, self.pcd_num_pts)
+    def _(self, arg : np.ndarray) -> np.ndarray:
+        print(arg.shape)
+        keep_inds = np.random.choice(arg.shape[0]-1, self.pcd_num_pts)
         return arg[keep_inds]
     
     @random.register(o3d.geometry.PointCloud)
-    def _(self, arg : o3d.geometry.PointCloud):
+    def _(self, arg : o3d.geometry.PointCloud) -> np.ndarray:
         keep_inds = np.random.choice(len(arg.points)-1, self.pcd_num_pts)
         return np.asarray(arg.points)[keep_inds]
     
