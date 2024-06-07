@@ -90,7 +90,7 @@ class DeepPoseEstimator(nn.Module):
         pcd1_feat = self.relu(self.bn1(self.conv1(pcd1_feat)))
         pcd2_feat = self.relu(self.bn1(self.conv1(pcd2_feat)))
         # after 1x1 conv : batch_size x 1 x num_pts (each point is represented by a scalar)
-        print(pcd1_feat.shape, pcd2_feat.shape)
+
         # concatenate per-point scalar into single vector
         combined_pcd = torch.cat((pcd1_feat, pcd2_feat), dim=2).permute(0,2,1)
 
