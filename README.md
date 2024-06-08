@@ -1,3 +1,3 @@
-Deep Pose Estimation from 3D Point Clouds
+**Deep Pose Estimation from 3D Point Clouds**
 
 A deep neural network to predict relative poses between two sets of 3D point clouds obtained from RGBD camera/LiDAR scans. This work aims to provide an alternative to traditional point cloud registration algorithms such as Iterative Closest Point (ICP). It aims to address two challenges that ICP faces: first, sensitivity to initialization, and second, heavy computational load for successive data alignment/optimization steps. We treat this as a pose regression problem and train an end to end to pipeline that extracts point clouds from RGBD camera data and uses a PointNet backbone as a feature extractor, followed by an MLP and the final regression layer.
